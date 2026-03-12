@@ -1,8 +1,8 @@
 "use client";
 
-export const dynamic = "force-dynamic"
+export const dynamic = "force-dynamic";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { defaultQuiz, Quiz } from "../../lib/quiz-data";
 import { supabase } from "../../lib/supabase";
@@ -19,7 +19,7 @@ import QuestionCard from "../../components/quiz/QuestionCard";
 import QuizNavigation from "../../components/quiz/QuizNavigation";
 import QuestionNavigator from "../../components/quiz/QuestionNavigator";
 
-export default function QuizPage() {
+function QuizPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -31,6 +31,7 @@ export default function QuizPage() {
 
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [loadingQuiz, setLoadingQuiz] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<(number | string)[]>([]);
@@ -38,8 +39,14 @@ export default function QuizPage() {
   const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
     function loadQuiz() {
-      const savedQuiz = localStorage.getItem("customQuiz");
+      const savedQuiz = window.localStorage.getItem("customQuiz");
 
       try {
         if (savedQuiz) {
@@ -78,7 +85,7 @@ export default function QuizPage() {
     }
 
     loadQuiz();
-  }, []);
+  }, [mounted]);
 
   function chooseMcqAnswer(index: number) {
     const updated = [...answers];
@@ -152,7 +159,7 @@ export default function QuizPage() {
           await document.exitFullscreen();
         }
       } catch {
-        // ignore fullscreen exit errors
+        //
       }
 
       router.replace(
@@ -269,7 +276,7 @@ export default function QuizPage() {
     };
   }, [submitting, answers, first, last, quiz]);
 
-  if (loadingQuiz) {
+  if (!mounted || loadingQuiz) {
     return (
       <main className="min-h-screen flex items-center justify-center">
         Loading quiz...
@@ -286,7 +293,14 @@ export default function QuizPage() {
   }
 
   const question = quiz.questions[current];
-  const progress = ((current + 1) / quiz.questions.length) * 100;
+
+  const answeredCount = answers.filter((answer) => {
+    if (typeof answer === "number") return true;
+    if (typeof answer === "string") return answer.trim() !== "";
+    return false;
+  }).length;
+
+  const progress = (answeredCount / quiz.questions.length) * 100;
 
   return (
     <main className="min-h-screen bg-slate-900 flex items-center justify-center px-6 py-10">
@@ -325,5 +339,19 @@ export default function QuizPage() {
         />
       </div>
     </main>
+  );
+}
+
+export default function QuizPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex items-center justify-center">
+          Loading quiz...
+        </main>
+      }
+    >
+      <QuizPageContent />
+    </Suspense>
   );
 }
