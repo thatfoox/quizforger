@@ -21,7 +21,7 @@ export default function HomePage() {
                 priority
               />
               <h1 className="text-5xl font-bold text-slate-900 tracking-tight">
-                QuizForge
+                QuizForger
               </h1>
             </div>
 
