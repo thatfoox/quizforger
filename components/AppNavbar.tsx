@@ -68,7 +68,7 @@ export default function AppNavbar() {
               priority
             />
             <span className="text-2xl font-bold tracking-tight text-slate-900 hover:text-slate-700 transition">
-              QuizForge
+              QuizForger
             </span>
           </Link>
 
