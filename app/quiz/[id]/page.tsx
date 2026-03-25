@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+export const dynamic = "force-dynamic";
+
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import type { Quiz } from "../../../lib/quiz-data";
@@ -23,7 +25,7 @@ type QuizRow = {
   quiz_data: Quiz;
 };
 
-export default function SharedQuizPage() {
+function SharedQuizPageContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,6 +45,9 @@ export default function SharedQuizPage() {
   const [answers, setAnswers] = useState<(number | string)[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
+
+  const [showExitWarning, setShowExitWarning] = useState(false);
+  const [exitHandled, setExitHandled] = useState(false);
 
   useEffect(() => {
     async function loadQuiz() {
@@ -154,7 +159,7 @@ export default function SharedQuizPage() {
           await document.exitFullscreen();
         }
       } catch {
-        // ignore fullscreen exit errors
+        //
       }
 
       router.replace(
@@ -169,6 +174,27 @@ export default function SharedQuizPage() {
       setSubmitting(false);
       submitLockRef.current = false;
     }
+  }
+
+  async function returnToFullscreen() {
+    setShowExitWarning(false);
+    setExitHandled(true);
+
+    try {
+      await document.documentElement.requestFullscreen();
+    } catch {
+      //
+    }
+
+    setTimeout(() => {
+      setExitHandled(false);
+    }, 400);
+  }
+
+  function confirmExitAndSubmit() {
+    setShowExitWarning(false);
+    setExitHandled(true);
+    finishQuiz();
   }
 
   useEffect(() => {
@@ -198,7 +224,9 @@ export default function SharedQuizPage() {
     if (submitting) return;
 
     function handleVisibilityChange() {
-      if (document.hidden) finishQuiz();
+      if (document.hidden) {
+        finishQuiz();
+      }
     }
 
     function handleBlur() {
@@ -206,8 +234,8 @@ export default function SharedQuizPage() {
     }
 
     function handleFullscreenChange() {
-      if (!document.fullscreenElement) {
-        finishQuiz();
+      if (!document.fullscreenElement && !submitting && !exitHandled) {
+        setShowExitWarning(true);
       }
     }
 
@@ -236,18 +264,11 @@ export default function SharedQuizPage() {
       e.preventDefault();
     }
 
-    function handleResize() {
-      if (window.innerWidth < 900 || window.innerHeight < 600) {
-        finishQuiz();
-      }
-    }
-
     window.history.pushState(null, "", window.location.href);
 
     window.addEventListener("popstate", handlePopState);
     window.addEventListener("beforeunload", handleBeforeUnload);
     window.addEventListener("blur", handleBlur);
-    window.addEventListener("resize", handleResize);
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     document.addEventListener("fullscreenchange", handleFullscreenChange);
@@ -260,7 +281,6 @@ export default function SharedQuizPage() {
       window.removeEventListener("popstate", handlePopState);
       window.removeEventListener("beforeunload", handleBeforeUnload);
       window.removeEventListener("blur", handleBlur);
-      window.removeEventListener("resize", handleResize);
 
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
@@ -269,7 +289,7 @@ export default function SharedQuizPage() {
       document.removeEventListener("paste", blockPaste);
       document.removeEventListener("cut", blockCut);
     };
-  }, [submitting, first, last, className, quizId, quiz, answers]);
+  }, [submitting, first, last, className, quizId, quiz, exitHandled]);
 
   if (loadingQuiz) {
     return (
@@ -296,42 +316,89 @@ export default function SharedQuizPage() {
   }).length;
 
   const progress = (answeredCount / quiz.questions.length) * 100;
+
   return (
-    <main className="min-h-screen bg-slate-900 flex items-center justify-center px-6 py-10">
-      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-xl p-10">
-        <QuizHeader
-          title={quiz.title}
-          current={current}
-          total={quiz.questions.length}
-          progress={progress}
-          timeLimitMinutes={quiz.timeLimitMinutes}
-          timeLeft={timeLeft}
-          formattedTime={formatTime(timeLeft)}
-        />
+    <>
+      <main className="min-h-screen bg-slate-900 flex items-center justify-center px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-10">
+        <div className="w-full max-w-3xl bg-white rounded-3xl shadow-xl p-4 sm:p-6 md:p-8">
+          <QuizHeader
+            title={quiz.title}
+            current={current}
+            total={quiz.questions.length}
+            progress={progress}
+            timeLimitMinutes={quiz.timeLimitMinutes}
+            timeLeft={timeLeft}
+            formattedTime={formatTime(timeLeft)}
+          />
 
-        <QuestionNavigator
-          total={quiz.questions.length}
-          current={current}
-          answers={answers}
-          onJumpToQuestion={jumpToQuestion}
-        />
+          <QuestionNavigator
+            total={quiz.questions.length}
+            current={current}
+            answers={answers}
+            onJumpToQuestion={jumpToQuestion}
+          />
 
-        <QuestionCard
-          question={question}
-          currentAnswer={answers[current]}
-          onChooseMcqAnswer={chooseMcqAnswer}
-          onChangeShortAnswer={changeShortAnswer}
-        />
+          <QuestionCard
+            question={question}
+            currentAnswer={answers[current]}
+            onChooseMcqAnswer={chooseMcqAnswer}
+            onChangeShortAnswer={changeShortAnswer}
+          />
 
-        <QuizNavigation
-          current={current}
-          total={quiz.questions.length}
-          submitting={submitting}
-          onPrevious={prevQuestion}
-          onNext={nextQuestion}
-          onFinish={finishQuiz}
-        />
-      </div>
-    </main>
+          <QuizNavigation
+            current={current}
+            total={quiz.questions.length}
+            submitting={submitting}
+            onPrevious={prevQuestion}
+            onNext={nextQuestion}
+            onFinish={finishQuiz}
+          />
+        </div>
+      </main>
+
+      {showExitWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+          <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl text-center">
+            <h2 className="text-2xl font-bold text-slate-900">
+              Exit Fullscreen?
+            </h2>
+
+            <p className="mt-4 text-slate-600">
+              If you exit fullscreen, your quiz will be submitted immediately.
+            </p>
+
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <button
+                onClick={returnToFullscreen}
+                className="px-5 py-3 rounded-xl bg-slate-200 text-slate-900 font-semibold hover:bg-slate-300 transition"
+              >
+                Stay in Quiz
+              </button>
+
+              <button
+                onClick={confirmExitAndSubmit}
+                className="px-5 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition"
+              >
+                Submit Quiz
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+export default function SharedQuizPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex items-center justify-center">
+          Loading quiz...
+        </main>
+      }
+    >
+      <SharedQuizPageContent />
+    </Suspense>
   );
 }

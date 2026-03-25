@@ -15,31 +15,35 @@ export default function QuizNavigation({
   onNext,
   onFinish,
 }: QuizNavigationProps) {
-  const isLastQuestion = current === total - 1;
+  const isLast = current === total - 1;
+  const isFirst = current === 0;
 
   return (
-    <div className="flex justify-between mt-8">
+    <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:justify-between">
       <button
+        type="button"
         onClick={onPrevious}
-        className="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300 transition disabled:opacity-50"
-        disabled={current === 0 || submitting}
+        disabled={isFirst || submitting}
+        className="w-full sm:w-auto px-5 py-3 rounded-xl bg-slate-200 text-slate-900 font-semibold hover:bg-slate-300 transition disabled:opacity-50"
       >
         Previous
       </button>
 
-      {isLastQuestion ? (
+      {isLast ? (
         <button
+          type="button"
           onClick={onFinish}
           disabled={submitting}
-          className="px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
+          className="w-full sm:w-auto px-5 py-3 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 transition disabled:opacity-50"
         >
-          {submitting ? "Submitting..." : "Finish"}
+          {submitting ? "Submitting..." : "Submit Quiz"}
         </button>
       ) : (
         <button
+          type="button"
           onClick={onNext}
           disabled={submitting}
-          className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition disabled:opacity-50"
+          className="w-full sm:w-auto px-5 py-3 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 transition disabled:opacity-50"
         >
           Next
         </button>
