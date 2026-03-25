@@ -1,8 +1,9 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function SubmittedPage() {
+function SubmittedPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -61,5 +62,19 @@ export default function SubmittedPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function SubmittedPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex items-center justify-center">
+          Loading...
+        </main>
+      }
+    >
+      <SubmittedPageContent />
+    </Suspense>
   );
 }
